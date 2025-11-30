@@ -1,9 +1,9 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
-  const [currentView, setCurrentView] = useState('portal-select');
+  // Initial view is now 'landing-page'
+  const [currentView, setCurrentView] = useState('landing-page'); 
   const [currentUserType, setCurrentUserType] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [papers, setPapers] = useState([]);
@@ -17,11 +17,11 @@ function App() {
     { email: 'admin@test.com', password: 'admin123', name: 'Admin User', type: 'admin' },
     { email: 'student1@test.com', password: 'pass123', name: 'Alice Johnson', type: 'student', university: 'MIT' },
     { email: 'student2@test.com', password: 'pass123', name: 'Bob Smith', type: 'student', university: 'Stanford' },
-    { email: 'student3@test.com', password: 'pass123', name: 'Carol Davis', type: 'student', university: 'Harvard' },
     { email: 'employee1@test.com', password: 'pass123', name: 'Dr. David Wilson', type: 'employee', department: 'Computer Science' },
     { email: 'employee2@test.com', password: 'pass123', name: 'Dr. Emma Brown', type: 'employee', department: 'AI Research' },
-    { email: 'employee3@test.com', password: 'pass123', name: 'Dr. Frank Miller', type: 'employee', department: 'Data Science' }
   ];
+
+  // --- Utility Functions ---
 
   const showToast = (message, type) => {
     const toast = document.createElement('div');
@@ -29,59 +29,120 @@ function App() {
       position: fixed;
       top: 2rem;
       right: 2rem;
-      background: #1a1a2e;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-left: 4px solid ${type === 'success' ? '#4ade80' : '#ef4444'};
+      background: #ffffff; 
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-left: 4px solid ${type === 'success' ? '#ec4899' : '#ef4444'}; 
       border-radius: 12px;
       padding: 1rem 1.5rem;
       min-width: 300px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
       z-index: 2000;
-      color: white;
+      color: #1f2937; 
+      transition: opacity 0.3s ease-in-out;
     `;
     toast.innerHTML = `
       <div style="font-weight: 600; margin-bottom: 0.25rem;">${type === 'success' ? 'Success' : 'Error'}</div>
-      <div style="color: #b0b0b0; font-size: 0.9rem;">${message}</div>
+      <div style="color: #6b7280; font-size: 0.9rem;">${message}</div>
     `;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
   };
 
-  const handleLogin = (event, userType) => {
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const getThemeColors = (userType) => {
+    switch (userType) {
+      case 'admin':
+        return { 
+          bg: '#06b6d4', // Teal (Admin)
+          btnClass: 'btn-admin',
+          accent: '#0e7490' // Darker Teal
+        };
+      case 'student':
+        return { 
+          bg: '#4f46e5', // Indigo (Student/Participant)
+          btnClass: 'btn-student',
+          accent: '#4338ca' // Darker Indigo
+        };
+      case 'employee':
+        return { 
+          bg: '#9333ea', // Purple (Reviewer/Employee)
+          btnClass: 'btn-employee',
+          accent: '#7e22ce' // Darker Purple
+        };
+      default:
+        return { 
+          bg: '#6b7280', 
+          btnClass: 'btn',
+          accent: '#374151'
+        };
+    }
+  };
+  
+  // --- Authentication Handlers ---
+
+  const handleLogin = (event) => {
     event.preventDefault();
     const formData = new FormData(event.target);
     const email = formData.get('email');
     const password = formData.get('password');
     
-    const account = testAccounts.find(acc => acc.email === email && acc.password === password && acc.type === userType);
+    // Find account regardless of type
+    const account = testAccounts.find(acc => acc.email === email && acc.password === password);
     
     if (account) {
       setCurrentUser(account);
-      setCurrentView('dashboard');
-      setCurrentUserType(userType);
+      // After generic login, force user to select their portal/role
+      setCurrentView('portal-select'); 
     } else {
-      showToast('Invalid credentials. Try one of the test accounts.', 'error');
+      showToast('Invalid email or password. Please use a test account.', 'error');
     }
   };
 
-  const handleSignup = (event, userType) => {
+  const handleSignup = (event) => {
     event.preventDefault();
     const formData = new FormData(event.target);
     const name = formData.get('name');
     const email = formData.get('email');
+    const password = formData.get('password');
+    const userType = formData.get('userType'); // New: Select type on signup
     
-    setCurrentUser({ 
+    // Check if account already exists
+    if (testAccounts.find(acc => acc.email === email)) {
+        showToast('Account with this email already exists.', 'error');
+        return;
+    }
+
+    // Create a temporary new account (in memory only for this demo)
+    const newAccount = { 
       email, 
+      password, 
       name, 
       type: userType,
       university: userType === 'student' ? 'New University' : undefined,
       department: userType === 'employee' ? 'New Department' : undefined
-    });
-    setCurrentView('dashboard');
-    setCurrentUserType(userType);
+    };
+    
+    // In a real app, you would add this to your database
+    testAccounts.push(newAccount);
+
+    setCurrentUser(newAccount);
+    setCurrentView('portal-select');
+    showToast('Account created successfully! Please select your portal.', 'success');
   };
 
+  // --- Core Action Handlers (Kept from previous version) ---
+
   const handlePaperSubmit = (event) => {
+    // ... (logic remains the same)
     event.preventDefault();
     const formData = new FormData(event.target);
     const title = formData.get('title');
@@ -104,8 +165,9 @@ function App() {
     showToast('Paper submitted successfully!', 'success');
     setCurrentView('dashboard');
   };
-
+  
   const handleScheduleMeeting = (event) => {
+    // ... (logic remains the same)
     event.preventDefault();
     const formData = new FormData(event.target);
     const professorEmail = formData.get('professor');
@@ -113,8 +175,13 @@ function App() {
     const time = formData.get('time');
     const topic = formData.get('topic');
     
-    const professor = testAccounts.find(acc => acc.email === professorEmail);
+    const professor = testAccounts.find(acc => acc.email === professorEmail && acc.type === 'employee');
     
+    if (!professor) {
+        showToast('Professor not found.', 'error');
+        return;
+    }
+
     const newMeeting = {
       id: Date.now().toString(),
       studentName: currentUser.name,
@@ -131,9 +198,11 @@ function App() {
     
     setMeetings([...meetings, newMeeting]);
     showToast('Meeting request sent successfully!', 'success');
+    setCurrentView('dashboard');
   };
 
   const handleReviewSubmit = (event, paperId) => {
+    // ... (logic remains the same)
     event.preventDefault();
     const formData = new FormData(event.target);
     const rating = parseInt(formData.get('rating'));
@@ -163,6 +232,7 @@ function App() {
   };
 
   const handleSessionCreate = (event) => {
+    // ... (logic remains the same)
     event.preventDefault();
     const formData = new FormData(event.target);
     
@@ -184,6 +254,7 @@ function App() {
   };
 
   const handleRegistration = (sessionId) => {
+    // ... (logic remains the same)
     const session = sessions.find(s => s.id === sessionId);
     const existingReg = registrations.find(r => r.sessionId === sessionId && r.userEmail === currentUser.email);
     
@@ -206,24 +277,32 @@ function App() {
   };
 
   const updatePaperStatus = (paperId, newStatus) => {
+    // ... (logic remains the same)
     setPapers(papers.map(p => p.id === paperId ? { ...p, status: newStatus } : p));
     showToast(`Paper ${newStatus.toLowerCase()} successfully!`, 'success');
   };
 
   const updateMeetingStatus = (meetingId, newStatus) => {
+    // ... (logic remains the same)
     setMeetings(meetings.map(m => m.id === meetingId ? { ...m, status: newStatus } : m));
     showToast(`Meeting ${newStatus.toLowerCase()} successfully!`, 'success');
   };
 
   const assignReviewer = (paperId, reviewerEmail) => {
+    // ... (logic remains the same)
     const paper = papers.find(p => p.id === paperId);
     const reviewer = testAccounts.find(acc => acc.email === reviewerEmail);
     
-    if (!paper.assignedReviewers) {
-      paper.assignedReviewers = [];
+    if (!paper) {
+        showToast('Paper not found!', 'error');
+        return;
     }
-    
-    if (paper.assignedReviewers.includes(reviewerEmail)) {
+    if (!reviewer) {
+        showToast('Reviewer not found!', 'error');
+        return;
+    }
+
+    if (paper.assignedReviewers && paper.assignedReviewers.includes(reviewerEmail)) {
       showToast('Reviewer already assigned to this paper!', 'error');
       return;
     }
@@ -238,251 +317,255 @@ function App() {
   };
 
   const deleteSession = (sessionId) => {
+    // ... (logic remains the same)
     setSessions(sessions.filter(s => s.id !== sessionId));
     setRegistrations(registrations.filter(r => r.sessionId !== sessionId));
     showToast('Session deleted successfully!', 'success');
   };
 
-  // Portal Selection View
+  // --- NEW: Centralized Login/Signup View ---
+
+  const LandingPage = () => {
+    const [isLogin, setIsLogin] = useState(true);
+
+    return (
+      // Base background for the whole page (Light Blue)
+      <div className="auth-container" style={{ background: '#eef7ff' }}>
+        <div className="auth-card auth-form-card" style={{ background: '#ffffff', color: '#1f2937' }}>
+          
+          <div className="auth-header">
+            <h1 className="auth-title">Welcome to CMS</h1>
+            <p className="auth-subtitle" style={{ color: '#6b7280' }}>Conference Management System</p>
+          </div>
+
+          {/* Login Form */}
+          {isLogin ? (
+            <form className="auth-form" onSubmit={handleLogin}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1.5rem', color: '#1f2937' }}>Sign In</h2>
+              <div className="form-group">
+                <label className="form-label" htmlFor="email-login" style={{ color: '#1f2937' }}>Email Address</label>
+                <input 
+                  type="email" 
+                  id="email-login" 
+                  name="email"
+                  className="form-input" 
+                  placeholder="Enter your email"
+                  required 
+                  style={{ background: '#f9fafb', border: '1px solid #d1d5db', color: '#1f2937' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="password-login" style={{ color: '#1f2937' }}>Password</label>
+                <input 
+                  type="password" 
+                  id="password-login" 
+                  name="password"
+                  className="form-input" 
+                  placeholder="Enter your password"
+                  required 
+                  style={{ background: '#f9fafb', border: '1px solid #d1d5db', color: '#1f2937' }}
+                />
+              </div>
+
+              <button type="submit" className="btn" style={{ background: '#ec4899', width: '100%', marginTop: '1rem' }}>
+                Sign In
+              </button>
+              
+            </form>
+          ) : (
+            /* Signup Form */
+            <form className="auth-form" onSubmit={handleSignup}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '1.5rem', color: '#1f2937' }}>Create Account</h2>
+              
+              <div className="form-group">
+                <label className="form-label" htmlFor="name-signup" style={{ color: '#1f2937' }}>Full Name</label>
+                <input 
+                  type="text" 
+                  id="name-signup" 
+                  name="name"
+                  className="form-input" 
+                  placeholder="Enter your full name"
+                  required 
+                  style={{ background: '#f9fafb', border: '1px solid #d1d5db', color: '#1f2937' }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="email-signup" style={{ color: '#1f2937' }}>Email Address</label>
+                <input 
+                  type="email" 
+                  id="email-signup" 
+                  name="email"
+                  className="form-input" 
+                  placeholder="Enter your email"
+                  required 
+                  style={{ background: '#f9fafb', border: '1px solid #d1d5db', color: '#1f2937' }}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label" htmlFor="password-signup" style={{ color: '#1f2937' }}>Password</label>
+                <input 
+                  type="password" 
+                  id="password-signup" 
+                  name="password"
+                  className="form-input" 
+                  placeholder="Create a password"
+                  minLength="6"
+                  required 
+                  style={{ background: '#f9fafb', border: '1px solid #d1d5db', color: '#1f2937' }}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label" htmlFor="userType-signup" style={{ color: '#1f2937' }}>Account Type</label>
+                <select 
+                    id="userType-signup" 
+                    name="userType" 
+                    className="form-input" 
+                    required 
+                    style={{ background: '#f9fafb', border: '1px solid #d1d5db', color: '#1f2937' }}
+                >
+                    <option value="">Select your role</option>
+                    <option value="student">Participant (Student)</option>
+                    <option value="employee">Reviewer (Employee/Professor)</option>
+                    <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <button type="submit" className="btn" style={{ background: '#ec4899', width: '100%', marginTop: '1rem' }}>
+                Create Account
+              </button>
+            </form>
+          )}
+
+          <div className="auth-switch">
+            <p style={{ color: '#6b7280' }}>
+              {isLogin ? "Don't have an account?" : "Already have an account?"}
+              <button 
+                className="link-btn" 
+                style={{ color: '#ec4899', marginLeft: '0.5rem' }} 
+                onClick={() => setIsLogin(!isLogin)}
+              >
+                {isLogin ? 'Sign Up' : 'Sign In'}
+              </button>
+            </p>
+            <p style={{ color: '#9ca3af', marginTop: '1rem', fontSize: '0.9rem', textAlign: 'center' }}>
+                **TEST ACCOUNTS** (e.g., admin@test.com/admin123, student1@test.com/pass123, employee1@test.com/pass123)
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  // --- Portal Selection View (Updated to use currentUser data) ---
+
   const PortalSelect = () => (
-    <div className="auth-container">
-      <div className="auth-card">
+    <div className="auth-container" style={{ background: '#eef7ff' }}> 
+      <div className="auth-card" style={{ background: '#ffffff', color: '#1f2937' }}>
         <div className="auth-header">
-          <h1 className="auth-title">Conference Management System</h1>
-          <p className="auth-subtitle">Select Your Portal</p>
+          <h1 className="auth-title">Select Your Portal, {currentUser.name}</h1>
+          <p className="auth-subtitle" style={{ color: '#6b7280' }}>Choose the role you wish to enter the system as for this session.</p>
+          <button className="back-btn" style={{ color: '#6b7280', marginTop: '1rem' }} onClick={() => { setCurrentUser(null); setCurrentView('landing-page'); }}>
+            ← Switch Account
+          </button>
         </div>
         
         <div className="portal-selection">
-          <div className="portal-card admin-portal" onClick={() => { setCurrentView('login'); setCurrentUserType('admin'); }}>
-            <div className="portal-icon">⚙️</div>
-            <h3>Admin Portal</h3>
-            <p>Manage conferences, schedules, reviews, and registrations</p>
-            <button className="btn btn-admin">Enter as Admin</button>
-          </div>
+          {currentUser.type === 'admin' && (
+            <div className="portal-card admin-portal" style={{ background: '#ccfbf1', color: '#0e7490', border: '1px solid #06b6d4' }} onClick={() => { setCurrentUserType('admin'); setCurrentView('dashboard'); }}>
+              <div className="portal-icon">⚙️</div>
+              <h3>Admin Portal</h3>
+              <p style={{ color: '#0e7490' }}>Manage conferences, schedules, reviews, and registrations</p>
+              <button className="btn btn-admin">Enter as Admin</button>
+            </div>
+          )}
 
-          <div className="portal-card student-portal" onClick={() => { setCurrentView('login'); setCurrentUserType('student'); }}>
-            <div className="portal-icon">🎓</div>
-            <h3>Participant Portal</h3>
-            <p>Submit papers, register for sessions, and view schedules</p>
-            <button className="btn btn-student">Enter as Participant</button>
-          </div>
+          {(currentUser.type === 'student' || currentUser.type === 'admin') && (
+            <div className="portal-card student-portal" style={{ background: '#e0e7ff', color: '#4338ca', border: '1px solid #4f46e5' }} onClick={() => { setCurrentUserType('student'); setCurrentView('dashboard'); }}>
+              <div className="portal-icon">🎓</div>
+              <h3>Participant Portal</h3>
+              <p style={{ color: '#4338ca' }}>Submit papers, register for sessions, and view schedules</p>
+              <button className="btn btn-student">Enter as Participant</button>
+            </div>
+          )}
 
-          <div className="portal-card employee-portal" onClick={() => { setCurrentView('login'); setCurrentUserType('employee'); }}>
-            <div className="portal-icon">👨‍🏫</div>
-            <h3>Reviewer Portal</h3>
-            <p>Review papers, provide feedback, and manage sessions</p>
-            <button className="btn btn-employee">Enter as Reviewer</button>
-          </div>
+          {(currentUser.type === 'employee' || currentUser.type === 'admin') && (
+            <div className="portal-card employee-portal" style={{ background: '#f3e8ff', color: '#7e22ce', border: '1px solid #9333ea' }} onClick={() => { setCurrentUserType('employee'); setCurrentView('dashboard'); }}>
+              <div className="portal-icon">👨‍🏫</div>
+              <h3>Reviewer Portal</h3>
+              <p style={{ color: '#7e22ce' }}>Review papers, provide feedback, and manage sessions</p>
+              <button className="btn btn-employee">Enter as Reviewer</button>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 
-  // Login View
-  const Login = ({ userType }) => {
-    const isStudent = userType === 'student';
-    const isAdmin = userType === 'admin';
-    const badgeClass = isAdmin ? 'admin-badge' : isStudent ? 'student-badge' : 'employee-badge';
-    const btnClass = isAdmin ? 'btn-admin' : isStudent ? 'btn-student' : 'btn-employee';
-    const icon = isAdmin ? '⚙️' : isStudent ? '🎓' : '👨‍🏫';
-    const label = isAdmin ? 'Admin' : isStudent ? 'Participant' : 'Reviewer';
-    
-    return (
-      <div className="auth-container">
-        <div className="auth-card auth-form-card">
-          <button className="back-btn" onClick={() => setCurrentView('portal-select')}>
-            ← Back to Portal Selection
-          </button>
-          
-          <div className="auth-header">
-            <div className={`portal-badge ${badgeClass}`}>
-              {icon} {label}
-            </div>
-            <h2 className="auth-title">Welcome Back</h2>
-            <p className="auth-subtitle">Sign in to continue</p>
-          </div>
+  // --- Dashboards (Only the student dashboard has a new feature) ---
 
-          <form className="auth-form" onSubmit={(e) => handleLogin(e, userType)}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="email">Email Address</label>
-              <input 
-                type="email" 
-                id="email" 
-                name="email"
-                className="form-input" 
-                placeholder="Enter your email"
-                required 
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="password">Password</label>
-              <input 
-                type="password" 
-                id="password" 
-                name="password"
-                className="form-input" 
-                placeholder="Enter your password"
-                required 
-              />
-            </div>
-
-            <button type="submit" className={`btn ${btnClass}`}>
-              Sign In
-            </button>
-          </form>
-
-          <div className="auth-switch">
-            <p>
-              Don't have an account?
-              <button className="link-btn" onClick={() => setCurrentView('signup')}>
-                Sign Up
-              </button>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Signup View
-  const Signup = ({ userType }) => {
-    const isStudent = userType === 'student';
-    const isAdmin = userType === 'admin';
-    const badgeClass = isAdmin ? 'admin-badge' : isStudent ? 'student-badge' : 'employee-badge';
-    const btnClass = isAdmin ? 'btn-admin' : isStudent ? 'btn-student' : 'btn-employee';
-    const icon = isAdmin ? '⚙️' : isStudent ? '🎓' : '👨‍🏫';
-    const label = isAdmin ? 'Admin' : isStudent ? 'Participant' : 'Reviewer';
-    
-    return (
-      <div className="auth-container">
-        <div className="auth-card auth-form-card">
-          <button className="back-btn" onClick={() => setCurrentView('portal-select')}>
-            ← Back to Portal Selection
-          </button>
-          
-          <div className="auth-header">
-            <div className={`portal-badge ${badgeClass}`}>
-              {icon} {label}
-            </div>
-            <h2 className="auth-title">Create Account</h2>
-            <p className="auth-subtitle">Sign up to get started</p>
-          </div>
-
-          <form className="auth-form" onSubmit={(e) => handleSignup(e, userType)}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="name">Full Name</label>
-              <input 
-                type="text" 
-                id="name" 
-                name="name"
-                className="form-input" 
-                placeholder="Enter your full name"
-                required 
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="email">Email Address</label>
-              <input 
-                type="email" 
-                id="email" 
-                name="email"
-                className="form-input" 
-                placeholder="Enter your email"
-                required 
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="password">Password</label>
-              <input 
-                type="password" 
-                id="password" 
-                name="password"
-                className="form-input" 
-                placeholder="Enter your password"
-                minLength="6"
-                required 
-              />
-            </div>
-
-            <button type="submit" className={`btn ${btnClass}`}>
-              Create Account
-            </button>
-          </form>
-
-          <div className="auth-switch">
-            <p>
-              Already have an account?
-              <button className="link-btn" onClick={() => setCurrentView('login')}>
-                Sign In
-              </button>
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Admin Dashboard
   const AdminDashboard = () => {
+    // ... (existing logic) ...
     const employees = testAccounts.filter(acc => acc.type === 'employee');
-    
+    const { bg, accent } = getThemeColors('admin');
+
     return (
-      <div className="theme-admin">
-        <nav className="nav">
+      <div className="theme-admin" style={{ background: '#eef7ff', color: '#1f2937' }}> 
+        <nav className="nav" style={{ background: bg, color: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
           <div className="nav-content">
             <div className="nav-logo">
               <span>⚙️</span>
-              Conference Management System
+              Admin Portal
             </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <span style={{ color: '#b0b0b0' }}>{currentUser.name}</span>
-              <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto' }} onClick={() => { setCurrentUser(null); setCurrentView('portal-select'); }}>Logout</button>
+              <span style={{ color: '#ffffff' }}>{currentUser.name}</span>
+              <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto', background: '#ec4899', border: 'none' }} onClick={() => { setCurrentUser(null); setCurrentView('landing-page'); }}>Logout</button>
             </div>
           </div>
         </nav>
 
-        <main className="main">
+        <main className="main" style={{ background: '#eef7ff' }}>
           <div className="hero">
-            <h1>Admin Dashboard</h1>
-            <p>Manage conference schedules, paper submissions, and peer reviews</p>
+            <h1 style={{ color: '#1f2937' }}>{getGreeting()}, {currentUser.name}!</h1> 
+            <p style={{ color: '#6b7280' }}>Manage conference schedules, paper submissions, and peer reviews</p>
           </div>
 
           <div style={{ marginTop: '3rem' }}>
             {/* Statistics Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-              <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📄</div>
-                <div style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.25rem' }}>{papers.length}</div>
-                <div style={{ color: '#b0b0b0' }}>Total Submissions</div>
+                <div style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.25rem', color: accent }}>{papers.length}</div>
+                <div style={{ color: '#6b7280' }}>Total Submissions</div>
               </div>
-              <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📅</div>
-                <div style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.25rem' }}>{sessions.length}</div>
-                <div style={{ color: '#b0b0b0' }}>Conference Sessions</div>
+                <div style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.25rem', color: accent }}>{sessions.length}</div>
+                <div style={{ color: '#6b7280' }}>Conference Sessions</div>
               </div>
-              <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>✍️</div>
-                <div style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.25rem' }}>{reviews.length}</div>
-                <div style={{ color: '#b0b0b0' }}>Peer Reviews</div>
+                <div style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.25rem', color: accent }}>{reviews.length}</div>
+                <div style={{ color: '#6b7280' }}>Peer Reviews</div>
               </div>
-              <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
+              <div style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>👥</div>
-                <div style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.25rem' }}>{registrations.length}</div>
-                <div style={{ color: '#b0b0b0' }}>Registrations</div>
+                <div style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.25rem', color: accent }}>{registrations.length}</div>
+                <div style={{ color: '#6b7280' }}>Registrations</div>
               </div>
             </div>
 
-            {/* Paper Management */}
+            {/* Paper Management (unchanged logic) */}
             <div style={{ marginBottom: '4rem' }}>
-              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>📋 Paper Submissions Management</h2>
-
+              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem', color: '#1f2937' }}>📋 Paper Submissions Management</h2>
+              {/* ... (Paper mapping logic) ... */}
               {papers.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#b0b0b0', background: '#1a1a2e', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#6b7280', background: '#ffffff', borderRadius: '16px', border: '1px solid #d1d5db', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                   <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>📋</div>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>No submissions yet</h3>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#1f2937' }}>No submissions yet</h3>
                   <p>Papers submitted by participants will appear here</p>
                 </div>
               ) : (
@@ -494,12 +577,12 @@ function App() {
                       : 'N/A';
                     
                     return (
-                      <div key={paper.id} style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
+                      <div key={paper.id} style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
                           <div>
-                            <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '0.5rem' }}>{paper.title}</h3>
-                            <p style={{ color: '#10b981', fontSize: '0.95rem', marginBottom: '0.25rem' }}>By {paper.authorName}</p>
-                            <p style={{ color: '#b0b0b0', fontSize: '0.9rem' }}>Submitted on {new Date(paper.submittedAt).toLocaleDateString()}</p>
+                            <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1f2937' }}>{paper.title}</h3>
+                            <p style={{ color: accent, fontSize: '0.95rem', marginBottom: '0.25rem' }}>By {paper.authorName}</p>
+                            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Submitted on {new Date(paper.submittedAt).toLocaleDateString()}</p>
                           </div>
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <span style={{ 
@@ -508,41 +591,41 @@ function App() {
                               fontSize: '0.85rem', 
                               fontWeight: '600', 
                               whiteSpace: 'nowrap',
-                              background: paper.status === 'Accepted' ? 'rgba(34, 197, 94, 0.1)' : paper.status === 'Rejected' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-                              color: paper.status === 'Accepted' ? '#4ade80' : paper.status === 'Rejected' ? '#ef4444' : '#facc15',
-                              border: paper.status === 'Accepted' ? '1px solid rgba(34, 197, 94, 0.3)' : paper.status === 'Rejected' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(234, 179, 8, 0.3)'
+                              background: paper.status === 'Accepted' ? 'rgba(34, 197, 94, 0.1)' : paper.status === 'Rejected' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 127, 80, 0.1)', 
+                              color: paper.status === 'Accepted' ? '#10b981' : paper.status === 'Rejected' ? '#ef4444' : '#ff7f50',
+                              border: paper.status === 'Accepted' ? '1px solid rgba(34, 197, 94, 0.3)' : paper.status === 'Rejected' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(255, 127, 80, 0.3)'
                             }}>
                               {paper.status}
                             </span>
                           </div>
                         </div>
                         
-                        <p style={{ color: '#b0b0b0', lineHeight: '1.6', marginBottom: '1rem' }}>{paper.abstract}</p>
+                        <p style={{ color: '#6b7280', lineHeight: '1.6', marginBottom: '1rem' }}>{paper.abstract}</p>
                         
                         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
                           {paper.keywords.map((kw, idx) => (
-                            <span key={idx} style={{ padding: '0.25rem 0.75rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '6px', fontSize: '0.85rem' }}>{kw}</span>
+                            <span key={idx} style={{ padding: '0.25rem 0.75rem', background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', borderRadius: '6px', fontSize: '0.85rem' }}>{kw}</span>
                           ))}
                         </div>
 
-                        <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: '12px', marginBottom: '1rem' }}>
+                        <div style={{ background: '#f9fafb', padding: '1rem', borderRadius: '12px', marginBottom: '1rem', border: '1px solid #e5e7eb' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                            <span style={{ color: '#b0b0b0' }}>Reviews: {paperReviews.length}</span>
-                            <span style={{ color: '#b0b0b0' }}>Avg Rating: ⭐ {avgRating}</span>
+                            <span style={{ color: '#6b7280' }}>Reviews: {paperReviews.length}</span>
+                            <span style={{ color: '#6b7280' }}>Avg Rating: ⭐ {avgRating}</span>
                           </div>
                           
                           <div style={{ marginBottom: '1rem' }}>
-                            <label style={{ color: '#b0b0b0', fontSize: '0.9rem', marginBottom: '0.5rem', display: 'block' }}>Assign Reviewer:</label>
+                            <label style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '0.5rem', display: 'block' }}>Assign Reviewer:</label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                               <select 
                                 id={`reviewer-${paper.id}`}
                                 style={{ 
                                   flex: 1,
                                   padding: '0.5rem',
-                                  background: 'rgba(255, 255, 255, 0.05)',
-                                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                                  background: '#ffffff',
+                                  border: '1px solid #d1d5db',
                                   borderRadius: '8px',
-                                  color: 'white',
+                                  color: '#1f2937',
                                   cursor: 'pointer'
                                 }}
                               >
@@ -553,7 +636,7 @@ function App() {
                               </select>
                               <button 
                                 className="btn"
-                                style={{ padding: '0.5rem 1rem', width: 'auto', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}
+                                style={{ padding: '0.5rem 1rem', width: 'auto', background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.3)' }}
                                 onClick={() => {
                                   const select = document.getElementById(`reviewer-${paper.id}`);
                                   if (select.value) assignReviewer(paper.id, select.value);
@@ -566,12 +649,12 @@ function App() {
 
                           {paper.assignedReviewers && paper.assignedReviewers.length > 0 && (
                             <div>
-                              <span style={{ color: '#b0b0b0', fontSize: '0.9rem' }}>Assigned Reviewers:</span>
+                              <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>Assigned Reviewers:</span>
                               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                                 {paper.assignedReviewers.map((email, idx) => {
                                   const reviewer = testAccounts.find(acc => acc.email === email);
                                   return (
-                                    <span key={idx} style={{ padding: '0.25rem 0.75rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '6px', fontSize: '0.85rem' }}>
+                                    <span key={idx} style={{ padding: '0.25rem 0.75rem', background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', borderRadius: '6px', fontSize: '0.85rem' }}>
                                       {reviewer?.name}
                                     </span>
                                   );
@@ -583,7 +666,7 @@ function App() {
 
                         {paper.status === 'Under Review' && (
                           <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.3)' }} onClick={() => updatePaperStatus(paper.id, 'Accepted')}>
+                            <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto', background: 'rgba(34, 197, 94, 0.1)', color: '#10b981', border: '1px solid rgba(34, 197, 94, 0.3)' }} onClick={() => updatePaperStatus(paper.id, 'Accepted')}>
                               Accept Paper
                             </button>
                             <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }} onClick={() => updatePaperStatus(paper.id, 'Rejected')}>
@@ -598,64 +681,43 @@ function App() {
               )}
             </div>
 
-            {/* Session Management */}
+            {/* Session Management (CONTINUED LOGIC) */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '2rem', fontWeight: '700' }}>📅 Conference Schedule Management</h2>
+                <h2 style={{ fontSize: '2rem', fontWeight: '700', color: '#1f2937' }}>📅 Conference Schedule Management</h2>
                 <button className="btn btn-admin" style={{ width: 'auto' }} onClick={() => setCurrentView('create-session')}>
                   + Create Session
                 </button>
               </div>
 
               {sessions.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#b0b0b0', background: '#1a1a2e', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#6b7280', background: '#ffffff', borderRadius: '16px', border: '1px solid #d1d5db', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
                   <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>📅</div>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>No sessions scheduled</h3>
-                  <p>Click "Create Session" to add conference sessions</p>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#1f2937' }}>No sessions created yet</h3>
+                  <p>Create conference sessions here.</p>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {sessions.map(session => {
-                    const sessionRegs = registrations.filter(r => r.sessionId === session.id);
-                    
+                    const sessionRegistrations = registrations.filter(r => r.sessionId === session.id);
                     return (
-                      <div key={session.id} style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <h3 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '0.5rem' }}>{session.title}</h3>
-                          <span style={{ padding: '0.25rem 0.75rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderRadius: '6px', fontSize: '0.85rem' }}>
-                            {session.track}
-                          </span>
-                        </div>
-                        
-                        <div style={{ marginBottom: '1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            <span>📅</span>
-                            <span style={{ color: '#b0b0b0' }}>{new Date(session.date).toLocaleDateString()}</span>
+                      <div key={session.id} style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                          <div>
+                            <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1f2937' }}>{session.title}</h3>
+                            <p style={{ color: accent, fontSize: '0.95rem' }}>Track: {session.track}</p>
+                            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>{session.date} | {session.startTime} - {session.endTime} in Room {session.room}</p>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            <span>🕐</span>
-                            <span style={{ color: '#b0b0b0' }}>{session.startTime} - {session.endTime}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span>📍</span>
-                            <span style={{ color: '#b0b0b0' }}>{session.room}</span>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <span style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', whiteSpace: 'nowrap', background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899', border: '1px solid rgba(236, 72, 153, 0.3)' }}>
+                              Attendees: {sessionRegistrations.length}
+                            </span>
+                            <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }} onClick={() => deleteSession(session.id)}>
+                              Delete
+                            </button>
                           </div>
                         </div>
-                        
-                        <p style={{ color: '#b0b0b0', lineHeight: '1.6', fontSize: '0.95rem', marginBottom: '1rem' }}>{session.description}</p>
-                        
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', marginBottom: '1rem' }}>
-                          <span style={{ color: '#b0b0b0', fontSize: '0.9rem' }}>Registrations:</span>
-                          <span style={{ color: '#10b981', fontWeight: '600' }}>{sessionRegs.length}</span>
-                        </div>
-
-                        <button 
-                          className="btn" 
-                          style={{ padding: '0.5rem 1rem', width: '100%', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}
-                          onClick={() => deleteSession(session.id)}
-                        >
-                          Delete Session
-                        </button>
+                        <p style={{ color: '#6b7280', lineHeight: '1.6' }}>{session.description}</p>
                       </div>
                     );
                   })}
@@ -668,682 +730,522 @@ function App() {
     );
   };
 
-  // Student Dashboard
-  const StudentDashboard = () => {
-    const userPapers = papers.filter(p => p.authorEmail === currentUser.email);
-    const userRegistrations = registrations.filter(r => r.userEmail === currentUser.email);
-    const registeredSessionIds = userRegistrations.map(r => r.sessionId);
+  // --- Employee/Reviewer Dashboard ---
+
+  const EmployeeDashboard = () => {
+    const { bg, accent } = getThemeColors('employee');
+    const assignedPapers = papers.filter(p => p.assignedReviewers && p.assignedReviewers.includes(currentUser.email));
+    const pendingMeetings = meetings.filter(m => m.professorEmail === currentUser.email && m.status === 'Pending');
+    const reviewedPapers = reviews.filter(r => r.reviewerEmail === currentUser.email).map(r => r.paperId);
     
     return (
-      <div className="theme-student">
-        <nav className="nav">
+      <div className="theme-employee" style={{ background: '#f3e8ff', color: '#1f2937' }}> 
+        <nav className="nav" style={{ background: bg, color: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
           <div className="nav-content">
             <div className="nav-logo">
-              <span>🎓</span>
-              Conference Management System
+              <span>👨‍🏫</span>
+              Reviewer Portal
             </div>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <span style={{ color: '#b0b0b0' }}>{currentUser.name}</span>
-              <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto' }} onClick={() => { setCurrentUser(null); setCurrentView('portal-select'); }}>Logout</button>
+              <span style={{ color: '#ffffff' }}>{currentUser.name}</span>
+              <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto', background: '#ec4899', border: 'none' }} onClick={() => { setCurrentUser(null); setCurrentView('landing-page'); }}>Logout</button>
             </div>
           </div>
         </nav>
-
-        <main className="main">
+        
+        <main className="main" style={{ background: '#f3e8ff' }}>
           <div className="hero">
-            <h1>Welcome, {currentUser.name}!</h1>
-            <p>Submit papers, register for sessions, and view conference schedules</p>
+            <h1 style={{ color: '#1f2937' }}>{getGreeting()}, {currentUser.name}!</h1> 
+            <p style={{ color: '#6b7280' }}>Manage assigned papers and student meeting requests.</p>
           </div>
 
           <div style={{ marginTop: '3rem' }}>
-            {/* Paper Submissions Section */}
+            {/* Paper Review Queue */}
             <div style={{ marginBottom: '4rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '2rem', fontWeight: '700' }}>📄 My Paper Submissions</h2>
-                <button className="btn btn-student" style={{ width: 'auto' }} onClick={() => setCurrentView('submit-paper')}>
-                  + Submit New Paper
-                </button>
-              </div>
-
-              {userPapers.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#b0b0b0', background: '#1a1a2e', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                  <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>📄</div>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>No papers submitted yet</h3>
-                  <p>Click "Submit New Paper" to get started</p>
+              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem', color: '#1f2937' }}>✍️ Paper Review Queue ({assignedPapers.length} Papers)</h2>
+              
+              {assignedPapers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#6b7280', background: '#ffffff', borderRadius: '16px', border: '1px solid #d1d5db', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>🎉</div>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#1f2937' }}>All caught up!</h3>
+                  <p>You have no new papers assigned for review.</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {userPapers.map(paper => {
+                  {assignedPapers.map(paper => {
+                    const isReviewed = reviewedPapers.includes(paper.id);
+                    return (
+                      <div key={paper.id} style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                          <div>
+                            <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1f2937' }}>{paper.title}</h3>
+                            <p style={{ color: accent, fontSize: '0.95rem', marginBottom: '0.25rem' }}>Author: {paper.authorName}</p>
+                            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Status: {paper.status} | Submitted: {new Date(paper.submittedAt).toLocaleDateString()}</p>
+                          </div>
+                          <div>
+                            {isReviewed ? (
+                              <span style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', whiteSpace: 'nowrap', background: 'rgba(34, 197, 94, 0.1)', color: '#10b981', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                                Review Submitted
+                              </span>
+                            ) : (
+                              <button 
+                                className="btn btn-employee" 
+                                style={{ width: 'auto' }} 
+                                onClick={() => setCurrentView(`review-form-${paper.id}`)}
+                              >
+                                Submit Review
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p style={{ color: '#6b7280', lineHeight: '1.6' }}>{paper.abstract}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
+            {/* Meeting Requests */}
+            <div style={{ marginBottom: '4rem' }}>
+              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem', color: '#1f2937' }}>🤝 Pending Meeting Requests ({pendingMeetings.length} Requests)</h2>
+              
+              {pendingMeetings.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#6b7280', background: '#ffffff', borderRadius: '16px', border: '1px solid #d1d5db', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>☕</div>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#1f2937' }}>Quiet day</h3>
+                  <p>No students have requested a meeting yet.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {pendingMeetings.map(meeting => (
+                    <div key={meeting.id} style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                        <div>
+                          <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1f2937' }}>Meeting with {meeting.studentName}</h3>
+                          <p style={{ color: accent, fontSize: '0.95rem' }}>Topic: {meeting.topic}</p>
+                          <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Requested for: **{meeting.date}** at **{meeting.time}**</p>
+                        </div>
+                        <span style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', whiteSpace: 'nowrap', background: 'rgba(251, 191, 36, 0.1)', color: '#d97706', border: '1px solid rgba(251, 191, 36, 0.3)' }}>
+                          {meeting.status}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto', background: 'rgba(34, 197, 94, 0.1)', color: '#10b981', border: '1px solid rgba(34, 197, 94, 0.3)' }} onClick={() => updateMeetingStatus(meeting.id, 'Confirmed')}>
+                          Confirm
+                        </button>
+                        <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }} onClick={() => updateMeetingStatus(meeting.id, 'Declined')}>
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        </main>
+      </div>
+    );
+  };
+
+  // --- Student/Participant Dashboard ---
+
+  const StudentDashboard = () => {
+    const { bg, accent } = getThemeColors('student');
+    const myPapers = papers.filter(p => p.authorEmail === currentUser.email);
+    const availableSessions = sessions; // All sessions are visible
+    const myRegistrations = registrations.filter(r => r.userEmail === currentUser.email).map(r => r.sessionId);
+    const myMeetings = meetings.filter(m => m.studentEmail === currentUser.email);
+    const professors = testAccounts.filter(acc => acc.type === 'employee');
+    
+    // NEW: Get meeting status for display
+    const pendingMeetingsCount = myMeetings.filter(m => m.status === 'Pending').length;
+    const confirmedMeetingsCount = myMeetings.filter(m => m.status === 'Confirmed').length;
+
+
+    return (
+      <div className="theme-student" style={{ background: '#e0e7ff', color: '#1f2937' }}> 
+        <nav className="nav" style={{ background: bg, color: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+          <div className="nav-content">
+            <div className="nav-logo">
+              <span>🎓</span>
+              Participant Portal
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <span style={{ color: '#ffffff' }}>{currentUser.name}</span>
+              <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto', background: '#ec4899', border: 'none' }} onClick={() => { setCurrentUser(null); setCurrentView('landing-page'); }}>Logout</button>
+            </div>
+          </div>
+        </nav>
+        
+        <main className="main" style={{ background: '#e0e7ff' }}>
+          <div className="hero">
+            <h1 style={{ color: '#1f2937' }}>{getGreeting()}, {currentUser.name}!</h1> 
+            <p style={{ color: '#6b7280' }}>Welcome to the conference participant management system from {currentUser.university}.</p>
+          </div>
+
+          <div style={{ marginTop: '3rem' }}>
+            {/* Action Buttons & Quick Stats */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+              <button className="btn btn-student" style={{ height: '100%', padding: '1.5rem' }} onClick={() => setCurrentView('submit-paper')}>
+                📄 Submit New Paper
+              </button>
+              <button className="btn btn-student" style={{ height: '100%', padding: '1.5rem' }} onClick={() => setCurrentView('schedule-meeting')}>
+                🤝 Schedule Meeting
+              </button>
+              {/* NEW STATS */}
+              <div style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', fontWeight: '700', color: accent }}>{confirmedMeetingsCount}</div>
+                <div style={{ color: '#6b7280' }}>Confirmed Meetings</div>
+              </div>
+              <div style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+                <div style={{ fontSize: '2rem', fontWeight: '700', color: accent }}>{pendingMeetingsCount}</div>
+                <div style={{ color: '#6b7280' }}>Pending Meetings</div>
+              </div>
+            </div>
+
+            {/* My Submissions */}
+            <div style={{ marginBottom: '4rem' }}>
+              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem', color: '#1f2937' }}>📄 My Paper Submissions ({myPapers.length})</h2>
+              
+              {myPapers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#6b7280', background: '#ffffff', borderRadius: '16px', border: '1px solid #d1d5db', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>📝</div>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#1f2937' }}>No papers submitted</h3>
+                  <p>Click 'Submit New Paper' to get started!</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {myPapers.map(paper => {
                     const paperReviews = reviews.filter(r => r.paperId === paper.id);
+                    const avgRating = paperReviews.length > 0 ? (paperReviews.reduce((sum, r) => sum + r.rating, 0) / paperReviews.length).toFixed(1) : 'N/A';
                     
                     return (
-                      <div key={paper.id} style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
+                      <div key={paper.id} style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                           <div>
-                            <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '0.5rem' }}>{paper.title}</h3>
-                            <p style={{ color: '#b0b0b0', fontSize: '0.9rem' }}>Submitted on {new Date(paper.submittedAt).toLocaleDateString()}</p>
+                            <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1f2937' }}>{paper.title}</h3>
+                            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Submitted on {new Date(paper.submittedAt).toLocaleDateString()}</p>
                           </div>
-                          <span style={{ 
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <span style={{ 
+                              padding: '0.5rem 1rem', 
+                              borderRadius: '8px', 
+                              fontSize: '0.85rem', 
+                              fontWeight: '600', 
+                              whiteSpace: 'nowrap',
+                              background: paper.status === 'Accepted' ? 'rgba(34, 197, 94, 0.1)' : paper.status === 'Rejected' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(255, 127, 80, 0.1)', 
+                              color: paper.status === 'Accepted' ? '#10b981' : paper.status === 'Rejected' ? '#ef4444' : '#ff7f50',
+                              border: paper.status === 'Accepted' ? '1px solid rgba(34, 197, 94, 0.3)' : paper.status === 'Rejected' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(255, 127, 80, 0.3)'
+                            }}>
+                              {paper.status}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div style={{ background: '#f9fafb', padding: '1rem', borderRadius: '12px', marginTop: '1rem', border: '1px solid #e5e7eb' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#6b7280' }}>Reviews Received: {paperReviews.length}</span>
+                            <span style={{ color: '#6b7280' }}>Avg Rating: ⭐ {avgRating}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Conference Sessions */}
+            <div style={{ marginBottom: '4rem' }}>
+              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem', color: '#1f2937' }}>📅 Conference Sessions ({availableSessions.length})</h2>
+              
+              {availableSessions.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#6b7280', background: '#ffffff', borderRadius: '16px', border: '1px solid #d1d5db', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>⏳</div>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#1f2937' }}>Schedule pending</h3>
+                  <p>The conference schedule hasn't been posted yet.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {availableSessions.map(session => {
+                    const isRegistered = myRegistrations.includes(session.id);
+                    return (
+                      <div key={session.id} style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                          <div>
+                            <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1f2937' }}>{session.title}</h3>
+                            <p style={{ color: accent, fontSize: '0.95rem' }}>Track: {session.track} | Room: {session.room}</p>
+                            <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>**{session.date}** at **{session.startTime}** - {session.endTime}</p>
+                          </div>
+                          <div>
+                            {isRegistered ? (
+                              <span style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', whiteSpace: 'nowrap', background: 'rgba(34, 197, 94, 0.1)', color: '#10b981', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                                Registered
+                              </span>
+                            ) : (
+                              <button className="btn btn-student" style={{ width: 'auto' }} onClick={() => handleRegistration(session.id)}>
+                                Register
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p style={{ color: '#6b7280', lineHeight: '1.6' }}>{session.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
+            {/* My Meetings */}
+            <div>
+              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem', color: '#1f2937' }}>🤝 My Meeting Requests ({myMeetings.length})</h2>
+              
+              {myMeetings.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#6b7280', background: '#ffffff', borderRadius: '16px', border: '1px solid #d1d5db', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>📅</div>
+                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', color: '#1f2937' }}>No meetings scheduled</h3>
+                  <p>Click 'Schedule Meeting' to request time with a faculty member.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {myMeetings.map(meeting => (
+                    <div key={meeting.id} style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                        <div>
+                          <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '0.5rem', color: '#1f2937' }}>Meeting with {meeting.professorName}</h3>
+                          <p style={{ color: accent, fontSize: '0.95rem' }}>Topic: {meeting.topic} | Dept: {meeting.department}</p>
+                          <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Scheduled for: **{meeting.date}** at **{meeting.time}**</p>
+                        </div>
+                        <span style={{ 
                             padding: '0.5rem 1rem', 
                             borderRadius: '8px', 
                             fontSize: '0.85rem', 
                             fontWeight: '600', 
                             whiteSpace: 'nowrap',
-                            background: paper.status === 'Accepted' ? 'rgba(34, 197, 94, 0.1)' : paper.status === 'Rejected' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-                            color: paper.status === 'Accepted' ? '#4ade80' : paper.status === 'Rejected' ? '#ef4444' : '#facc15',
-                            border: paper.status === 'Accepted' ? '1px solid rgba(34, 197, 94, 0.3)' : paper.status === 'Rejected' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(234, 179, 8, 0.3)'
-                          }}>
-                            {paper.status}
-                          </span>
-                        </div>
-                        <p style={{ color: '#b0b0b0', lineHeight: '1.6', marginBottom: '1rem' }}>{paper.abstract}</p>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                          {paper.keywords.map((kw, idx) => (
-                            <span key={idx} style={{ padding: '0.25rem 0.75rem', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', borderRadius: '6px', fontSize: '0.85rem' }}>{kw}</span>
-                          ))}
-                        </div>
-                        
-                        {paperReviews.length > 0 && (
-                          <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: '12px' }}>
-                            <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem' }}>Reviews ({paperReviews.length})</h4>
-                            {paperReviews.map(review => (
-                              <div key={review.id} style={{ marginBottom: '0.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                  <span style={{ color: '#60a5fa', fontSize: '0.9rem' }}>{review.reviewerName}</span>
-                                  <span style={{ color: '#facc15' }}>⭐ {review.rating}/5</span>
-                                </div>
-                                <p style={{ color: '#b0b0b0', fontSize: '0.9rem', marginBottom: '0.25rem' }}>{review.comments}</p>
-                                <span style={{ 
-                                  padding: '0.25rem 0.5rem', 
-                                  borderRadius: '6px', 
-                                  fontSize: '0.8rem',
-                                  background: review.recommendation === 'Accept' ? 'rgba(34, 197, 94, 0.1)' : review.recommendation === 'Reject' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-                                  color: review.recommendation === 'Accept' ? '#4ade80' : review.recommendation === 'Reject' ? '#ef4444' : '#facc15'
-                                }}>
-                                  {review.recommendation}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Conference Schedule */}
-            <div style={{ marginBottom: '4rem' }}>
-              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>📅 Conference Schedule</h2>
-              
-              {sessions.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#b0b0b0', background: '#1a1a2e', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                  <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>📅</div>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>No sessions scheduled</h3>
-                  <p>Conference sessions will appear here once scheduled</p>
-                </div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
-                  {sessions.map(session => {
-                    const isRegistered = registeredSessionIds.includes(session.id);
-                    
-                    return (
-                      <div key={session.id} style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <h3 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '0.5rem' }}>{session.title}</h3>
-                          <span style={{ padding: '0.25rem 0.75rem', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', borderRadius: '6px', fontSize: '0.85rem' }}>
-                            {session.track}
-                          </span>
-                        </div>
-                        
-                        <div style={{ marginBottom: '1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            <span>📅</span>
-                            <span style={{ color: '#b0b0b0' }}>{new Date(session.date).toLocaleDateString()}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            <span>🕐</span>
-                            <span style={{ color: '#b0b0b0' }}>{session.startTime} - {session.endTime}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span>📍</span>
-                            <span style={{ color: '#b0b0b0' }}>{session.room}</span>
-                          </div>
-                        </div>
-                        
-                        <p style={{ color: '#b0b0b0', lineHeight: '1.6', fontSize: '0.95rem', marginBottom: '1rem' }}>{session.description}</p>
-                        
-                        {isRegistered ? (
-                          <div style={{ padding: '0.75rem', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-                            ✓ Registered
-                          </div>
-                        ) : (
-                          <button 
-                            className="btn btn-student" 
-                            style={{ width: '100%', padding: '0.75rem' }}
-                            onClick={() => handleRegistration(session.id)}
-                          >
-                            Register for Session
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* My Registrations */}
-            <div>
-              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>🎫 My Registrations</h2>
-              
-              {userRegistrations.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#b0b0b0', background: '#1a1a2e', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                  <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>🎫</div>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>No registrations yet</h3>
-                  <p>Register for conference sessions to see them here</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {userRegistrations.map(reg => {
-                    const session = sessions.find(s => s.id === reg.sessionId);
-                    if (!session) return null;
-                    
-                    return (
-                      <div key={reg.id} style={{ background: '#1a1a2e', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '12px', padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <h4 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.25rem' }}>{session.title}</h4>
-                          <p style={{ color: '#b0b0b0', fontSize: '0.9rem' }}>
-                            {new Date(session.date).toLocaleDateString()} • {session.startTime} - {session.endTime} • {session.room}
-                          </p>
-                        </div>
-                        <span style={{ padding: '0.5rem 1rem', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-                          Confirmed
+                            background: meeting.status === 'Confirmed' ? 'rgba(34, 197, 94, 0.1)' : meeting.status === 'Declined' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(251, 191, 36, 0.1)', 
+                            color: meeting.status === 'Confirmed' ? '#10b981' : meeting.status === 'Declined' ? '#ef4444' : '#d97706',
+                            border: meeting.status === 'Confirmed' ? '1px solid rgba(34, 197, 94, 0.3)' : meeting.status === 'Declined' ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(251, 191, 36, 0.3)'
+                        }}>
+                          {meeting.status}
                         </span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  };
-
-  // Employee Dashboard (Reviewer)
-  const EmployeeDashboard = () => {
-    const assignedPapers = papers.filter(p => p.assignedReviewers?.includes(currentUser.email));
-    const myReviews = reviews.filter(r => r.reviewerEmail === currentUser.email);
-    const reviewedPaperIds = myReviews.map(r => r.paperId);
-    
-    return (
-      <div className="theme-employee">
-        <nav className="nav">
-          <div className="nav-content">
-            <div className="nav-logo">
-              <span>👨‍🏫</span>
-              Conference Management System
-            </div>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <span style={{ color: '#b0b0b0' }}>{currentUser.name}</span>
-              <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto' }} onClick={() => { setCurrentUser(null); setCurrentView('portal-select'); }}>Logout</button>
-            </div>
-          </div>
-        </nav>
-
-        <main className="main">
-          <div className="hero">
-            <h1>Welcome, {currentUser.name}!</h1>
-            <p>Review papers and provide valuable feedback to authors</p>
-          </div>
-
-          <div style={{ marginTop: '3rem' }}>
-            {/* Statistics */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-              <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
-                <div style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '0.25rem' }}>{assignedPapers.length}</div>
-                <div style={{ color: '#b0b0b0', fontSize: '0.9rem' }}>Assigned Papers</div>
-              </div>
-              <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✍️</div>
-                <div style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '0.25rem' }}>{myReviews.length}</div>
-                <div style={{ color: '#b0b0b0', fontSize: '0.9rem' }}>Reviews Completed</div>
-              </div>
-              <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
-                <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
-                <div style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '0.25rem' }}>{assignedPapers.length - myReviews.length}</div>
-                <div style={{ color: '#b0b0b0', fontSize: '0.9rem' }}>Pending Reviews</div>
-              </div>
-            </div>
-
-            {/* Assigned Papers for Review */}
-            <div style={{ marginBottom: '4rem' }}>
-              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>📋 Papers Assigned for Review</h2>
-
-              {assignedPapers.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#b0b0b0', background: '#1a1a2e', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                  <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>📋</div>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>No papers assigned</h3>
-                  <p>Papers assigned to you by admin will appear here</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {assignedPapers.map(paper => {
-                    const alreadyReviewed = reviewedPaperIds.includes(paper.id);
-                    
-                    return (
-                      <div key={paper.id} style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
-                          <div>
-                            <h3 style={{ fontSize: '1.3rem', fontWeight: '600', marginBottom: '0.5rem' }}>{paper.title}</h3>
-                            <p style={{ color: '#a78bfa', fontSize: '0.95rem', marginBottom: '0.25rem' }}>By {paper.authorName}</p>
-                            <p style={{ color: '#b0b0b0', fontSize: '0.9rem' }}>Submitted on {new Date(paper.submittedAt).toLocaleDateString()}</p>
-                          </div>
-                          {alreadyReviewed && (
-                            <span style={{ padding: '0.5rem 1rem', background: 'rgba(34, 197, 94, 0.1)', color: '#4ade80', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-                              ✓ Reviewed
-                            </span>
-                          )}
-                        </div>
-                        <p style={{ color: '#b0b0b0', lineHeight: '1.6', marginBottom: '1rem' }}>{paper.abstract}</p>
-                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-                          {paper.keywords.map((kw, idx) => (
-                            <span key={idx} style={{ padding: '0.25rem 0.75rem', background: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa', borderRadius: '6px', fontSize: '0.85rem' }}>{kw}</span>
-                          ))}
-                        </div>
-                        
-                        {!alreadyReviewed && (
-                          <button 
-                            className="btn btn-employee" 
-                            style={{ width: 'auto', padding: '0.75rem 1.5rem' }}
-                            onClick={() => {
-                              setCurrentView('review-paper');
-                              window.currentPaperId = paper.id;
-                            }}
-                          >
-                            Write Review
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* My Reviews */}
-            <div>
-              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>✍️ My Reviews</h2>
-              
-              {myReviews.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#b0b0b0', background: '#1a1a2e', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                  <div style={{ fontSize: '4rem', marginBottom: '1rem', opacity: '0.5' }}>✍️</div>
-                  <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>No reviews submitted</h3>
-                  <p>Your completed reviews will appear here</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {myReviews.map(review => {
-                    const paper = papers.find(p => p.id === review.paperId);
-                    if (!paper) return null;
-                    
-                    return (
-                      <div key={review.id} style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem' }}>
-                        <div style={{ marginBottom: '1rem' }}>
-                          <h3 style={{ fontSize: '1.2rem', fontWeight: '600', marginBottom: '0.5rem' }}>{paper.title}</h3>
-                          <p style={{ color: '#b0b0b0', fontSize: '0.9rem' }}>Reviewed on {new Date(review.submittedAt).toLocaleDateString()}</p>
-                        </div>
-                        
-                        <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: '12px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                            <span style={{ color: '#b0b0b0' }}>Rating:</span>
-                            <span style={{ color: '#facc15', fontWeight: '600' }}>⭐ {review.rating}/5</span>
-                          </div>
-                          <div style={{ marginBottom: '0.75rem' }}>
-                            <span style={{ color: '#b0b0b0', display: 'block', marginBottom: '0.5rem' }}>Comments:</span>
-                            <p style={{ color: 'white', lineHeight: '1.6' }}>{review.comments}</p>
-                          </div>
-                          <div>
-                            <span style={{ color: '#b0b0b0', marginRight: '0.5rem' }}>Recommendation:</span>
-                            <span style={{ 
-                              padding: '0.25rem 0.75rem', 
-                              borderRadius: '6px', 
-                              fontSize: '0.85rem', 
-                              fontWeight: '600',
-                              background: review.recommendation === 'Accept' ? 'rgba(34, 197, 94, 0.1)' : review.recommendation === 'Reject' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-                              color: review.recommendation === 'Accept' ? '#4ade80' : review.recommendation === 'Reject' ? '#ef4444' : '#facc15'
-                            }}>
-                              {review.recommendation}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  };
-
-  // Submit Paper View
-  const SubmitPaper = () => (
-    <div className="theme-student">
-      <nav className="nav">
-        <div className="nav-content">
-          <div className="nav-logo">
-            <span>🎓</span>
-            Conference Management System
-          </div>
-        </div>
-      </nav>
-
-      <main className="main">
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <button className="back-btn" onClick={() => setCurrentView('dashboard')}>
-            ← Back to Dashboard
-          </button>
-
-          <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', padding: '2rem' }}>
-            <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>Submit New Paper</h2>
-
-            <form className="auth-form" onSubmit={handlePaperSubmit}>
-              <div className="form-group">
-                <label className="form-label" htmlFor="paper-title">Paper Title</label>
-                <input 
-                  type="text" 
-                  id="paper-title" 
-                  name="title"
-                  className="form-input" 
-                  placeholder="Enter your paper title"
-                  required 
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="paper-abstract">Abstract</label>
-                <textarea 
-                  id="paper-abstract" 
-                  name="abstract"
-                  className="form-input" 
-                  placeholder="Enter your paper abstract"
-                  style={{ minHeight: '150px', resize: 'vertical', fontFamily: 'inherit' }}
-                  required
-                ></textarea>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="paper-keywords">Keywords (comma-separated)</label>
-                <input 
-                  type="text" 
-                  id="paper-keywords" 
-                  name="keywords"
-                  className="form-input" 
-                  placeholder="e.g., Machine Learning, AI, Neural Networks"
-                  required 
-                />
-              </div>
-
-              <button type="submit" className="btn btn-student">
-                Submit Paper
-              </button>
-            </form>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-
-  // Review Paper View
-  const ReviewPaper = () => {
-    const paperId = window.currentPaperId;
-    const paper = papers.find(p => p.id === paperId);
-    
-    if (!paper) {
-      return <div>Paper not found</div>;
-    }
-    
-    return (
-      <div className="theme-employee">
-        <nav className="nav">
-          <div className="nav-content">
-            <div className="nav-logo">
-              <span>👨‍🏫</span>
-              Conference Management System
-            </div>
-          </div>
-        </nav>
-
-        <main className="main">
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <button className="back-btn" onClick={() => setCurrentView('dashboard')}>
-              ← Back to Dashboard
-            </button>
-
-            <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', padding: '2rem', marginBottom: '2rem' }}>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '0.5rem' }}>{paper.title}</h2>
-              <p style={{ color: '#a78bfa', marginBottom: '0.25rem' }}>By {paper.authorName}</p>
-              <p style={{ color: '#b0b0b0', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Submitted on {new Date(paper.submittedAt).toLocaleDateString()}</p>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>Abstract</h3>
-                <p style={{ color: '#b0b0b0', lineHeight: '1.6' }}>{paper.abstract}</p>
-              </div>
-              
-              <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '0.5rem' }}>Keywords</h3>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {paper.keywords.map((kw, idx) => (
-                    <span key={idx} style={{ padding: '0.25rem 0.75rem', background: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa', borderRadius: '6px', fontSize: '0.85rem' }}>{kw}</span>
+                    </div>
                   ))}
                 </div>
-              </div>
+              )}
             </div>
 
-            <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', padding: '2rem' }}>
-              <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>Submit Your Review</h2>
-
-              <form className="auth-form" onSubmit={(e) => handleReviewSubmit(e, paperId)}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="rating">Rating (1-5)</label>
-                  <select 
-                    id="rating" 
-                    name="rating"
-                    className="form-input" 
-                    required
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <option value="">Select rating...</option>
-                    <option value="5">⭐⭐⭐⭐⭐ Excellent (5)</option>
-                    <option value="4">⭐⭐⭐⭐ Good (4)</option>
-                    <option value="3">⭐⭐⭐ Average (3)</option>
-                    <option value="2">⭐⭐ Below Average (2)</option>
-                    <option value="1">⭐ Poor (1)</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="comments">Review Comments</label>
-                  <textarea 
-                    id="comments" 
-                    name="comments"
-                    className="form-input" 
-                    placeholder="Provide detailed feedback on the paper..."
-                    style={{ minHeight: '150px', resize: 'vertical', fontFamily: 'inherit' }}
-                    required
-                  ></textarea>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="recommendation">Recommendation</label>
-                  <select 
-                    id="recommendation" 
-                    name="recommendation"
-                    className="form-input" 
-                    required
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <option value="">Select recommendation...</option>
-                    <option value="Accept">Accept</option>
-                    <option value="Minor Revisions">Minor Revisions</option>
-                    <option value="Major Revisions">Major Revisions</option>
-                    <option value="Reject">Reject</option>
-                  </select>
-                </div>
-
-                <button type="submit" className="btn btn-employee">
-                  Submit Review
-                </button>
-              </form>
-            </div>
           </div>
         </main>
       </div>
     );
   };
+  
+  // --- Form Views ---
 
-  // Create Session View
-  const CreateSession = () => (
-    <div className="theme-admin">
-      <nav className="nav">
-        <div className="nav-content">
-          <div className="nav-logo">
-            <span>⚙️</span>
-            Conference Management System
+  const FormContainer = ({ title, description, children }) => {
+    const { bg, accent } = getThemeColors(currentUserType);
+    return (
+      <div className="form-container" style={{ background: '#eef7ff', color: '#1f2937' }}>
+        <nav className="nav" style={{ background: bg, color: '#ffffff', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+          <div className="nav-content">
+            <div className="nav-logo">
+              <span>{currentUserType === 'admin' ? '⚙️' : currentUserType === 'student' ? '🎓' : '👨‍🏫'}</span>
+              {currentUserType.charAt(0).toUpperCase() + currentUserType.slice(1)} Portal
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <button className="btn" style={{ padding: '0.5rem 1rem', width: 'auto', background: '#ec4899', border: 'none' }} onClick={() => setCurrentView('dashboard')}>Back to Dashboard</button>
+            </div>
           </div>
+        </nav>
+        <div className="form-card" style={{ background: '#ffffff', border: '1px solid #d1d5db', borderRadius: '16px', padding: '2rem 2.5rem', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '0.5rem', color: accent }}>{title}</h1>
+          <p style={{ color: '#6b7280', marginBottom: '2rem' }}>{description}</p>
+          {children}
         </div>
-      </nav>
+      </div>
+    );
+  };
 
-      <main className="main">
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <button className="back-btn" onClick={() => setCurrentView('dashboard')}>
-            ← Back to Dashboard
-          </button>
-
-          <div style={{ background: '#1a1a2e', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '20px', padding: '2rem' }}>
-            <h2 style={{ fontSize: '2rem', fontWeight: '700', marginBottom: '2rem' }}>Create Conference Session</h2>
-
-            <form className="auth-form" onSubmit={handleSessionCreate}>
-              <div className="form-group">
-                <label className="form-label" htmlFor="session-title">Session Title</label>
-                <input 
-                  type="text" 
-                  id="session-title" 
-                  name="title"
-                  className="form-input" 
-                  placeholder="Enter session title"
-                  required 
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="session-track">Track</label>
-                <select 
-                  id="session-track" 
-                  name="track"
-                  className="form-input" 
-                  required
-                  style={{ cursor: 'pointer' }}
-                >
-                  <option value="">Select track...</option>
-                  <option value="AI & Machine Learning">AI & Machine Learning</option>
-                  <option value="Data Science">Data Science</option>
-                  <option value="Software Engineering">Software Engineering</option>
-                  <option value="Cybersecurity">Cybersecurity</option>
-                  <option value="Cloud Computing">Cloud Computing</option>
-                  <option value="IoT">IoT</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="session-date">Date</label>
-                <input 
-                  type="date" 
-                  id="session-date" 
-                  name="date"
-                  className="form-input" 
-                  min={new Date().toISOString().split('T')[0]}
-                  required 
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="session-start">Start Time</label>
-                  <input 
-                    type="time" 
-                    id="session-start" 
-                    name="startTime"
-                    className="form-input" 
-                    required 
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="session-end">End Time</label>
-                  <input 
-                    type="time" 
-                    id="session-end" 
-                    name="endTime"
-                    className="form-input" 
-                    required 
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="session-room">Room/Location</label>
-                <input 
-                  type="text" 
-                  id="session-room" 
-                  name="room"
-                  className="form-input" 
-                  placeholder="e.g., Hall A, Room 101"
-                  required 
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="session-description">Description</label>
-                <textarea 
-                  id="session-description" 
-                  name="description"
-                  className="form-input" 
-                  placeholder="Enter session description"
-                  style={{ minHeight: '100px', resize: 'vertical', fontFamily: 'inherit' }}
-                  required
-                ></textarea>
-              </div>
-
-              <button type="submit" className="btn btn-admin">
-                Create Session
-              </button>
-            </form>
-          </div>
+  const PaperSubmissionForm = () => (
+    <FormContainer title="Submit New Research Paper" description="Please fill in the details of your submission.">
+      <form className="form" onSubmit={handlePaperSubmit}>
+        <div className="form-group">
+          <label className="form-label" htmlFor="title">Paper Title</label>
+          <input type="text" id="title" name="title" className="form-input" required placeholder="e.g., A Novel Approach to Deep Learning" />
         </div>
-      </main>
-    </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="abstract">Abstract (Max 500 characters)</label>
+          <textarea id="abstract" name="abstract" className="form-input" maxLength="500" rows="5" required placeholder="Provide a brief summary of your work." />
+        </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="keywords">Keywords (Comma Separated)</label>
+          <input type="text" id="keywords" name="keywords" className="form-input" required placeholder="e.g., AI, Machine Learning, Data Science" />
+        </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="file">Upload File (PDF Only - Demo Placeholder)</label>
+          <input type="file" id="file" name="file" className="form-input" accept=".pdf" />
+        </div>
+        <button type="submit" className={`btn ${getThemeColors(currentUserType).btnClass}`} style={{ marginTop: '1.5rem' }}>Submit Paper</button>
+      </form>
+    </FormContainer>
   );
+  
+  const ScheduleMeetingForm = () => {
+    const professors = testAccounts.filter(acc => acc.type === 'employee');
+    return (
+      <FormContainer title="Schedule Meeting with Faculty" description="Request a one-on-one meeting with a professor/employee.">
+        <form className="form" onSubmit={handleScheduleMeeting}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="professor">Select Faculty Member</label>
+            <select id="professor" name="professor" className="form-input" required>
+              <option value="">Choose Professor</option>
+              {professors.map(p => (
+                <option key={p.email} value={p.email}>{p.name} ({p.department})</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group-inline">
+            <div className="form-group">
+              <label className="form-label" htmlFor="date">Date</label>
+              <input type="date" id="date" name="date" className="form-input" required />
+            </div>
+            <div className="form-group">
+              <label className="form-label" htmlFor="time">Time</label>
+              <input type="time" id="time" name="time" className="form-input" required />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="topic">Meeting Topic/Reason</label>
+            <textarea id="topic" name="topic" className="form-input" rows="3" required placeholder="Briefly describe the purpose of the meeting." />
+          </div>
+          <button type="submit" className={`btn ${getThemeColors(currentUserType).btnClass}`} style={{ marginTop: '1.5rem' }}>Send Request</button>
+        </form>
+      </FormContainer>
+    );
+  };
+  
+  const CreateSessionForm = () => (
+    <FormContainer title="Create Conference Session" description="Define a new time slot and details for the conference schedule.">
+      <form className="form" onSubmit={handleSessionCreate}>
+        <div className="form-group">
+          <label className="form-label" htmlFor="title">Session Title</label>
+          <input type="text" id="title" name="title" className="form-input" required placeholder="e.g., Keynote on Future of AI" />
+        </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="track">Track/Category</label>
+          <input type="text" id="track" name="track" className="form-input" required placeholder="e.g., Computer Science, Robotics, Humanities" />
+        </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="room">Room/Venue</label>
+          <input type="text" id="room" name="room" className="form-input" required placeholder="e.g., Grand Ballroom, Room 301, Online" />
+        </div>
+        <div className="form-group-inline">
+          <div className="form-group">
+            <label className="form-label" htmlFor="date">Date</label>
+            <input type="date" id="date" name="date" className="form-input" required />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="startTime">Start Time</label>
+            <input type="time" id="startTime" name="startTime" className="form-input" required />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="endTime">End Time</label>
+            <input type="time" id="endTime" name="endTime" className="form-input" required />
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label" htmlFor="description">Session Description</label>
+          <textarea id="description" name="description" className="form-input" rows="4" required placeholder="Provide a detailed description of the session content." />
+        </div>
+        <button type="submit" className={`btn ${getThemeColors(currentUserType).btnClass}`} style={{ marginTop: '1.5rem' }}>Create Session</button>
+      </form>
+    </FormContainer>
+  );
+  
+  const ReviewForm = ({ paperId }) => {
+    const paper = papers.find(p => p.id === paperId);
+    if (!paper) {
+      // Fallback for direct link/state issue
+      return (
+        <FormContainer title="Error" description="Paper not found.">
+          <p>The paper you tried to review could not be loaded.</p>
+          <button className={`btn ${getThemeColors(currentUserType).btnClass}`} onClick={() => setCurrentView('dashboard')}>Go to Dashboard</button>
+        </FormContainer>
+      );
+    }
+    return (
+      <FormContainer title={`Reviewing: ${paper.title}`} description={`Provide your confidential review for the paper by ${paper.authorName}.`}>
+        <form className="form" onSubmit={(e) => handleReviewSubmit(e, paperId)}>
+          <div className="form-group">
+            <label className="form-label" htmlFor="rating">Overall Quality Rating (1=Poor, 5=Excellent)</label>
+            <input type="number" id="rating" name="rating" className="form-input" min="1" max="5" required placeholder="Enter a rating from 1 to 5" />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="recommendation">Recommendation</label>
+            <select id="recommendation" name="recommendation" className="form-input" required>
+              <option value="">Select recommendation...</option>
+              <option value="Strong Accept">Strong Accept</option>
+              <option value="Weak Accept">Weak Accept</option>
+              <option value="Borderline">Borderline</option>
+              <option value="Weak Reject">Weak Reject</option>
+              <option value="Strong Reject">Strong Reject</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="comments">Detailed Comments</label>
+            <textarea id="comments" name="comments" className="form-input" rows="6" required placeholder="Provide constructive feedback, focusing on strengths and weaknesses." />
+          </div>
+          <button type="submit" className={`btn ${getThemeColors(currentUserType).btnClass}`} style={{ marginTop: '1.5rem' }}>Submit Review</button>
+        </form>
+      </FormContainer>
+    );
+  };
 
-  // Main render
+  // --- Main App Logic to Render Current View ---
+  
+  const renderView = () => {
+    // 1. Landing and Authentication Views
+    if (currentView === 'landing-page') return <LandingPage />;
+    if (currentView === 'portal-select') return <PortalSelect />;
+    
+    // 2. Dashboard Views
+    if (currentView === 'dashboard') {
+      if (!currentUser || !currentUserType) return <LandingPage />; // Safety net
+      switch (currentUserType) {
+        case 'admin':
+          return <AdminDashboard />;
+        case 'student':
+          return <StudentDashboard />;
+        case 'employee':
+          return <EmployeeDashboard />;
+        default:
+          return <LandingPage />;
+      }
+    }
+
+    // 3. Form Views
+    if (currentView === 'submit-paper') return <PaperSubmissionForm />;
+    if (currentView === 'schedule-meeting') return <ScheduleMeetingForm />;
+    if (currentView === 'create-session') return <CreateSessionForm />;
+
+    // Handle dynamic review-form views
+    if (currentView.startsWith('review-form-')) {
+      const paperId = currentView.split('-')[2];
+      return <ReviewForm paperId={paperId} />;
+    }
+    
+    return <LandingPage />; // Default fallback
+  };
+
   return (
-    <div className="app">
-      {currentView === 'portal-select' && <PortalSelect />}
-      {currentView === 'login' && <Login userType={currentUserType} />}
-      {currentView === 'signup' && <Signup userType={currentUserType} />}
-      {currentView === 'dashboard' && currentUserType === 'admin' && <AdminDashboard />}
-      {currentView === 'dashboard' && currentUserType === 'student' && <StudentDashboard />}
-      {currentView === 'dashboard' && currentUserType === 'employee' && <EmployeeDashboard />}
-      {currentView === 'submit-paper' && <SubmitPaper />}
-      {currentView === 'review-paper' && <ReviewPaper />}
-      {currentView === 'create-session' && <CreateSession />}
+    <div className="App">
+      {renderView()}
     </div>
   );
 }
